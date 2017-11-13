@@ -10,6 +10,8 @@ class TrajectoryPredictor:
 
     self.lstm = torch.nn.LSTM(input_dim, output_dim)
 
+    # add tanh 
+
     self.init_state()
 
   # tensors should be sequence_len x batch_size x input_dim
@@ -37,7 +39,7 @@ class TrajectoryPredictor:
           inp = traj_first_part[i,:,:].view(1, self.batch_size, self.input_dim)
           out, self.state = self.lstm(inp, self.state)
 
-        second_part_preds = []
+        second_part_preds = [out]
 
         for i in range(second_part_len):
           if i == 0:
