@@ -96,8 +96,8 @@ class TrajectoryPredictor:
 
   def init_state(self):
     # first dimension is number of layers; not sure what adding layers does
-    h_init = torch.autograd.Variable(torch.randn(1, self.batch_size, self.output_dim))
-    c_init = torch.autograd.Variable(torch.randn(1, self.batch_size, self.output_dim))
+    h_init = torch.autograd.Variable(torch.zeros(1, self.batch_size, self.output_dim))
+    c_init = torch.autograd.Variable(torch.zeros(1, self.batch_size, self.output_dim))
 
     self.state = (h_init, c_init)
 
