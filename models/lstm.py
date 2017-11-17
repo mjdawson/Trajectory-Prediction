@@ -77,7 +77,7 @@ class TrajectoryPredictor:
 
         optimizer.step()
 
-      print total_loss
+      print("epoch: %s. total loss: %s" % (epoch+1,total_loss))
 
   def test(self, test_loader):
     
