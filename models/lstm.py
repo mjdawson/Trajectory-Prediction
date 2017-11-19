@@ -43,9 +43,10 @@ class TrajectoryPredictor:
           inp = traj_first_part[:,i,:].contiguous().view(1, actual_batch_size, self.input_dim)
           out, self.state = self.lstm(inp, self.state)
 
-        second_part_preds = [out.contiguous().view(actual_batch_size, 1, self.output_dim)]
+        #second_part_preds = [out.contiguous().view(actual_batch_size, 1, self.output_dim)]
+        second_part_preds = []
         
-        for i in range(second_part_len - 1):
+        for i in range(second_part_len):
           if i == 0:
             inp = out
           else:
@@ -92,9 +93,10 @@ class TrajectoryPredictor:
         inp = traj_first_part[:,i,:].contiguous().view(1, actual_batch_size, self.input_dim)
         out, self.state = self.lstm(inp, self.state)
 
-      second_part_preds = [out.contiguous().view(actual_batch_size, 1, self.output_dim)]
+      #second_part_preds = [out.contiguous().view(actual_batch_size, 1, self.output_dim)]
+      second_part_preds = []
 
-      for i in range(second_part_len - 1):
+      for i in range(second_part_len):
         out, self.state = self.lstm(out, self.state)
         second_part_preds.append(out.contiguous().view(actual_batch_size, 1, self.output_dim))
 
