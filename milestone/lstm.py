@@ -25,6 +25,7 @@ class TrajectoryPredictor:
 
     for epoch in range(num_epochs):   
       total_loss = 0.0
+      count = 0
       for data in train_loader:
 
         optimizer.zero_grad()
@@ -36,6 +37,7 @@ class TrajectoryPredictor:
         second_part_len = int(traj_second_part.size()[1])
 
         actual_batch_size = min(int(traj_first_part.size()[0]), self.batch_size)
+        count += actual_batch_size
 
         self.init_state(actual_batch_size)
 
@@ -63,12 +65,15 @@ class TrajectoryPredictor:
 
         optimizer.step()
 
-      print("epoch: %s. total loss: %s" % (epoch+1,total_loss))
+      mean_loss = total_loss / count
+      print("epoch %s. mean loss: %s" % (epoch+1, mean_loss))
 
   def test(self, test_loader):
     
     loss_function = torch.nn.PairwiseDistance()
     total_loss = 0.0
+
+    count = 0
 
     for data in test_loader:
 
@@ -80,6 +85,8 @@ class TrajectoryPredictor:
       second_part_len = int(traj_second_part.size()[1])
 
       actual_batch_size = min(int(traj_first_part.size()[0]), self.batch_size)
+
+      count += actual_batch_size
 
       self.init_state(actual_batch_size)
 
@@ -102,7 +109,8 @@ class TrajectoryPredictor:
       loss = loss_function(ground_truth_points, pred_points).sum()
       total_loss += loss.data[0]
 
-    return total_loss
+    mean_loss = total_loss / count
+    print("mean loss: %s" % (mean_loss))
 
   def init_state(self, batch_size):
     # first dimension is number of layers
