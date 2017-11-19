@@ -35,11 +35,14 @@ def compute_linear_error(trajectories, Nf):
             y_prev = y_pred
             
             # may also use new x information to predict
-            x_prev = x
-            y_prev = y
+            #x_prev = x
+            #y_prev = y
 
             error = sqrt((x-x_pred)**2 + (y-y_pred)**2)
             traj_error += error
 
         dataset_error += traj_error
-    return dataset_error/len(trajectories)
+    return dataset_error
+#    return dataset_error/len(trajectories)
+
+

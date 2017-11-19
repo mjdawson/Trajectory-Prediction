@@ -17,24 +17,17 @@ class TrajectoryPredictor:
 
     self.lstm = torch.nn.LSTM(input_dim, output_dim)
 
-    self.tanh = torch.nn.Tanh()
-
-    #self.init_state()
-
   # tensors should be sequence_len x batch_size x input_dim
   def train(self, train_loader, num_epochs):
 
     loss_function = torch.nn.PairwiseDistance()
-    optimizer = torch.optim.SGD(self.lstm.parameters(), lr=0.001, momentum=0.9)
+    optimizer = torch.optim.Adam(self.lstm.parameters())
 
-    for epoch in range(num_epochs):
-      
+    for epoch in range(num_epochs):   
       total_loss = 0.0
       for data in train_loader:
 
         optimizer.zero_grad()
-        
-
         traj_first_part, traj_second_part = data
         traj_first_part, traj_second_part = torch.autograd.Variable(traj_first_part), \
                                             torch.autograd.Variable(traj_second_part)
@@ -46,25 +39,20 @@ class TrajectoryPredictor:
 
         self.init_state(actual_batch_size)
 
-        #if actual_batch_size != self.batch_size:
-        #  import pdb; pdb.set_trace()
-
         for i in range(first_part_len):
           inp = traj_first_part[:,i,:].contiguous().view(1, actual_batch_size, self.input_dim)
           out, self.state = self.lstm(inp, self.state)
 
-        second_part_preds = [self.tanh(out).contiguous().view(actual_batch_size, 1, self.output_dim)]
-
+        second_part_preds = [out.contiguous().view(actual_batch_size, 1, self.output_dim)]
         
         for i in range(second_part_len - 1):
           if i == 0:
             inp = out
           else:
-            inp = traj_second_part[:,i,:].contiguous().view(1, actual_batch_size, self.input_dim)
+            inp = traj_second_part[:,i-1,:].contiguous().view(1, actual_batch_size, self.input_dim)
 
           pred, self.state = self.lstm(inp, self.state)
-          _pred = self.tanh(pred)
-          second_part_preds.append(_pred.contiguous().view(actual_batch_size, 1, self.output_dim))
+          second_part_preds.append(pred.contiguous().view(actual_batch_size, 1, self.output_dim))
 
         second_part_preds = torch.cat(second_part_preds, dim=1)
 
@@ -72,12 +60,14 @@ class TrajectoryPredictor:
         pred_points = second_part_preds.contiguous().view(-1, self.output_dim)
 
         loss = loss_function(ground_truth_points, pred_points).sum()
-        total_loss += loss.data[0]
         loss.backward()
+
+        total_loss += loss.data[0]
 
         optimizer.step()
 
       print("epoch: %s. total loss: %s" % (epoch+1,total_loss))
+      print count
 
   def test(self, test_loader):
     
@@ -102,12 +92,11 @@ class TrajectoryPredictor:
         inp = traj_first_part[:,i,:].contiguous().view(1, actual_batch_size, self.input_dim)
         out, self.state = self.lstm(inp, self.state)
 
-      second_part_preds = [self.tanh(out).contiguous().view(actual_batch_size, 1, self.output_dim)]
+      second_part_preds = [out.contiguous().view(actual_batch_size, 1, self.output_dim)]
 
       for i in range(second_part_len - 1):
         out, self.state = self.lstm(out, self.state)
-        _out = self.tanh(out)
-        second_part_preds.append(_out.contiguous().view(actual_batch_size, 1, self.output_dim))
+        second_part_preds.append(out.contiguous().view(actual_batch_size, 1, self.output_dim))
 
       second_part_preds = torch.cat(second_part_preds, dim=1)
 
@@ -120,7 +109,7 @@ class TrajectoryPredictor:
     return total_loss
 
   def init_state(self, batch_size):
-    # first dimension is number of layers; not sure what adding layers does
+    # first dimension is number of layers
     h_init = torch.autograd.Variable(torch.zeros(1, batch_size, self.output_dim))
     c_init = torch.autograd.Variable(torch.zeros(1, batch_size, self.output_dim))
 
@@ -136,7 +125,8 @@ if __name__ == '__main__':
           trajectories = load_simple_array('train_data/' + dirname + '/' + filename)
           train_trajectories1 += [traj[:10,:] for traj in trajectories]
           train_trajectories2 += [traj[10:,:] for traj in trajectories]
-
+  
+  print len(train_trajectories1)
   train_trajectories1 = np.stack(train_trajectories1)
   train_trajectories2 = np.stack(train_trajectories2)
   data_tensor = torch.Tensor(train_trajectories1)
@@ -144,7 +134,15 @@ if __name__ == '__main__':
 
   dataset = torch.utils.data.TensorDataset(data_tensor, target_tensor)
 
-  train_loader = torch.utils.data.DataLoader(dataset, batch_size = 4)
+  batch_size = 4
+  num_epochs = 10
 
-  p = TrajectoryPredictor(2, 2, 4)
-  p.train(train_loader, 10)
+  train_loader = torch.utils.data.DataLoader(dataset, batch_size)
+  test_loader = torch.utils.data.DataLoader(dataset, batch_size)
+
+  p = TrajectoryPredictor(2, 2, batch_size)
+  p.train(train_loader, num_epochs)
+
+  loss = p.test(test_loader)
+
+  print loss
