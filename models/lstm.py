@@ -39,14 +39,28 @@ class TrajectoryPredictor:
 
         self.init_state(actual_batch_size)
 
-        for i in range(first_part_len):
-          inp = traj_first_part[:,i,:].contiguous().view(1, actual_batch_size, self.input_dim)
-          out, self.state = self.lstm(inp, self.state)
+        v_x = traj_first_part[:,1,0] - traj_first_part[:,0,0]
+        v_y = traj_first_part[:,1,1] - traj_first_part[:,0,1]
 
+        for i in range(first_part_len):
+          if i > 0:
+            v_x = traj_first_part[:,i,0] - traj_first_part[:,i-1,0]
+            v_y = traj_first_part[:,i,1] - traj_first_part[:,i-1,1]
+          inp = torch.cat((traj_first_part[:,i,:], v_x.contiguous().view(actual_batch_size, 1), \
+                          v_y.contiguous().view(actual_batch_size, 1)), dim=1).contiguous().view(1, actual_batch_size, self.input_dim)
+          out, self.state = self.lstm(inp, self.state)
+          
         second_part_preds = [out.contiguous().view(actual_batch_size, 1, self.output_dim)]
+
+        v_x = traj_second_part[:,0,0] - traj_first_part[:, first_part_len - 1, 0]
+        v_y = traj_second_part[:,0,1] - traj_first_part[:, first_part_len - 1, 1]
         
         for i in range(second_part_len-1):
-          inp = traj_second_part[:,i,:].contiguous().view(1, actual_batch_size, self.input_dim)
+          if i > 0:
+            v_x = traj_second_part[:,i,0] - traj_second_part[:,i-1,0]
+            v_y = traj_second_part[:,i,1] - traj_second_part[:,i-1,1]
+          inp = torch.cat((traj_second_part[:,i,:], v_x.contiguous().view(actual_batch_size, 1), \
+                          v_y.contiguous().view(actual_batch_size, 1)), dim=1).contiguous().view(1, actual_batch_size, self.input_dim)
 
           pred, self.state = self.lstm(inp, self.state)
           second_part_preds.append(pred.contiguous().view(actual_batch_size, 1, self.output_dim))
@@ -83,15 +97,31 @@ class TrajectoryPredictor:
 
       self.init_state(actual_batch_size)
 
+      v_x = traj_first_part[:,1,0] - traj_first_part[:,0,0]
+      v_y = traj_first_part[:,1,1] - traj_first_part[:,0,1]
 
       for i in range(first_part_len):
-        inp = traj_first_part[:,i,:].contiguous().view(1, actual_batch_size, self.input_dim)
+        if i > 0:
+          v_x = traj_first_part[:,i,0] - traj_first_part[:,i-1,0]
+          v_y = traj_first_part[:,i,1] - traj_first_part[:,i-1,1]
+        inp = torch.cat((traj_first_part[:,i,:], v_x.contiguous().view(actual_batch_size, 1), \
+                         v_y.contiguous().view(actual_batch_size, 1)), dim=1).contiguous().view(1, actual_batch_size, self.input_dim)
         out, self.state = self.lstm(inp, self.state)
-
+      
       second_part_preds = [out.contiguous().view(actual_batch_size, 1, self.output_dim)]
 
+      v_x = out[0,:,0] - traj_first_part[:,first_part_len - 1,0]
+      v_y = out[0,:,1] - traj_first_part[:,first_part_len - 1,1]
+
+      prev_out = out
+
       for i in range(second_part_len-1):
-        out, self.state = self.lstm(out, self.state)
+        if i > 0:
+          v_x = out[0,:,0] - prev_out[0,:,0]
+          v_y = out[0,:,1] - prev_out[0,:,1]
+        prev_out = out
+        inp = torch.cat((out, v_x.contiguous().view(1,actual_batch_size,1), v_y.contiguous().view(1,actual_batch_size,1)), dim=2)
+        out, self.state = self.lstm(inp, self.state)
         second_part_preds.append(out.contiguous().view(actual_batch_size, 1, self.output_dim))
 
       second_part_preds = torch.cat(second_part_preds, dim=1)
@@ -114,11 +144,11 @@ class TrajectoryPredictor:
 if __name__ == '__main__':
   train_trajectories1 = []
   train_trajectories2 = []
-  for dirname in os.listdir('train_data'):
+  for dirname in os.listdir('train'):
     if dirname == 'stanford':
-      for filename in os.listdir('train_data/' + dirname):
+      for filename in os.listdir('train/' + dirname + '/annotations'):
         if filename.endswith('.txt'):
-          trajectories = load_simple_array('train_data/' + dirname + '/' + filename)
+          trajectories = load_simple_array('train/' + dirname + '/annotations/' + filename)
           train_trajectories1 += [traj[:10,:] for traj in trajectories]
           train_trajectories2 += [traj[10:,:] for traj in trajectories]
   
@@ -131,12 +161,12 @@ if __name__ == '__main__':
   dataset = torch.utils.data.TensorDataset(data_tensor, target_tensor)
 
   batch_size = 4
-  num_epochs = 40
+  num_epochs = 10
 
   train_loader = torch.utils.data.DataLoader(dataset, batch_size)
   test_loader = torch.utils.data.DataLoader(dataset, batch_size)
 
-  p = TrajectoryPredictor(2, 2, batch_size)
+  p = TrajectoryPredictor(4, 2, batch_size)
   p.train(train_loader, num_epochs)
 
   loss = p.test(test_loader)
