@@ -1,17 +1,30 @@
 import pandas as pd
 import numpy as np
-import matplotlib.pylab as plt
 import csv
 
-def load_simple_array(fname):
+
+def generate_augmented_trajs(traj):
+    # creates 5 new augmented trajectories for the given trajectory input
+    flip_x = [(-x,y) for (x,y) in traj]
+    flip_y = [(x,-y) for (x,y) in traj]
+    rot_90 = [(-y,x) for (x,y) in traj]
+    rot_180 = [(-x,-y) for (x,y) in traj]
+    rot_270 = [(y,-x) for (x,y) in traj]
+    return [flip_x,flip_y,rot_90,rot_180,rot_270]
+
+def load_simple_array(fname,augment=False):
     # loads the file into a simple array of frame index vs [x,y]
     trajectories = process_text_file_simple(fname)
     trajectory_list = []
     for key,val in trajectories.iteritems():        
         trajectory_list.append(np.array(val))
+        if (augment):        
+            new_trajectories = generate_augmented_trajs(val)
+            for t in new_trajectories:
+                trajectory_list.append(np.array(t))
     return trajectory_list
 
-def load_others_array(fname,N):
+def load_others_array(fname,N,centered=False):
     # loads the file into an array of frame index vs [x,y,flattened other array]    
     trajectories = process_text_file_others(fname)
     trajectory_list = []
@@ -23,17 +36,26 @@ def load_others_array(fname,N):
             others_list = val[2]
             others_array = np.zeros((N,N))
             for (x,y) in others_list:
-                Dx = x-my_x
-                Dy = y-my_y
-                ind_x = int(N/2+Dx)
-                ind_y = int(N/2+Dy)
-                if ind_x >= 0 and ind_x < N and ind_y >= 0 and ind_y < N:
-                    others_array[ind_x,ind_y] = 1
+                if centered:
+                    Dx = x-my_x
+                    Dy = y-my_yT                
+                    ind_x = int(N/2+N/2*Dx)
+                    ind_y = int(N/2+N/2*Dy)
+                    if ind_x >= 0 and ind_x < N and ind_y >= 0 and ind_y < N:
+                        others_array[ind_x,ind_y] = 1
+                else:
+                    ind_x = int(N*x)
+                    ind_y = int(N*y)
+                    if ind_x >= 0 and ind_x < N and ind_y >= 0 and ind_y < N:
+                        others_array[ind_x,ind_y] = 1                    
+
             xy_array = np.array((my_x,my_y))
             ret_array = np.concatenate((xy_array,others_array.flatten()),axis=0)
             ret_array = np.reshape(ret_array,(2+N*N,1))
             data.append(ret_array)
-        trajectory_list.append(np.concatenate(data,axis=1).T)
+        #trajectory_list.append(np.concatenate(data,axis=1).T)
+        trajectory_list.append([(my_x,my_y),others_array])
+
     return trajectory_list
 
 def get_max_x_y_positions(df):
