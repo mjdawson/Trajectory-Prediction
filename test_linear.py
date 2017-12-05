@@ -8,12 +8,11 @@ if __name__ == '__main__':
   
   trajectories = []
 
-  for dirname in os.listdir('train_data'):
+  for dirname in os.listdir('dev'):
     if dirname == 'stanford':
-      for filename in os.listdir('train_data/' + dirname):
+      for filename in os.listdir('dev/' + dirname + '/annotations'):
         if filename.endswith('.txt'):
-          trajectories += load_simple_array('train_data/' + dirname + '/' + filename)
+          trajectories += load_simple_array('dev/' + dirname + '/annotations/' + filename)
 
-  print len(trajectories)
-  error = compute_linear_error(trajectories, 10)
+  error = compute_linear_error(trajectories, 10) 
   print error

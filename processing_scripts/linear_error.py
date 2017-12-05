@@ -42,7 +42,6 @@ def compute_linear_error(trajectories, Nf):
             traj_error += error
 
         dataset_error += traj_error
-    return dataset_error
-#    return dataset_error/len(trajectories)
+    return dataset_error/len(trajectories)
 
 
