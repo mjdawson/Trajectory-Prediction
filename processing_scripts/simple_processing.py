@@ -184,7 +184,7 @@ def get_segmented_image(fname, N=10):
         seg_class = int(seg_class)
         x = (x+1.0)/2       # normalize between 0 and 1
         y = (y+1.0)/2       # normalize between 0 and 1
-        nx = int(N*x)  # get array indeces
+        nx = int(N*x)       # get array indeces
         ny = int(N*y)
         if nx >= 0 and nx < N and ny >= 0 and ny < N:
             segment_array[nx,ny] = seg_class
