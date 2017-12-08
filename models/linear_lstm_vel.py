@@ -196,7 +196,7 @@ if __name__ == '__main__':
   dev_dataset = torch.utils.data.TensorDataset(dev_data_tensor, dev_target_tensor)
 
   batch_size = 4
-  num_epochs = 20
+  num_epochs = 2
 
   train_loader = torch.utils.data.DataLoader(train_dataset, batch_size)
   test_loader = torch.utils.data.DataLoader(dev_dataset, batch_size)

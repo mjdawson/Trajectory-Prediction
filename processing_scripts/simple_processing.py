@@ -14,11 +14,13 @@ def generate_augmented_trajs(traj):
     o7 = [(-y,-x) for (x,y) in traj]
     return [o1, o2, o3, o4, o5, o6, o7]
 
+
+
 def load_simple_array(fname,augment=False):
     # loads the file into a simple array of frame index vs [x,y]
     trajectories = process_text_file_simple(fname)
     trajectory_list = []
-    for key,val in trajectories.iteritems():        
+    for key,val in trajectories.items():        
         trajectory_list.append(np.array(val))
         if (augment):        
             new_trajectories = generate_augmented_trajs(val)
@@ -30,40 +32,7 @@ def load_others_array(fname,N,centered=False):
     # loads the file into an array of frame index vs [x,y,flattened other array]    
     trajectories = process_text_file_others(fname)
     trajectory_list = []
-    for piD,traj in trajectories.iteritems():
-        data = []
-        for val in traj:
-            my_x = val[0]
-            my_y = val[1]
-            others_list = val[2]
-            others_array = np.zeros((N,N))
-            for (x,y) in others_list:
-                if centered:
-                    Dx = x-my_x
-                    Dy = y-my_yT                
-                    ind_x = int(N/2+N/2*Dx)
-                    ind_y = int(N/2+N/2*Dy)
-                    if ind_x >= 0 and ind_x < N and ind_y >= 0 and ind_y < N:
-                        others_array[ind_x,ind_y] = 1
-                else:
-                    ind_x = int(N*x)
-                    ind_y = int(N*y)
-                    if ind_x >= 0 and ind_x < N and ind_y >= 0 and ind_y < N:
-                        others_array[ind_x,ind_y] = 1                    
-
-            xy_array = np.array((my_x,my_y))
-            ret_array = np.concatenate((xy_array,others_array.flatten()),axis=0)
-            ret_array = np.reshape(ret_array,(2+N*N,1))
-            data.append(ret_array)
-        #trajectory_list.append(np.concatenate(data,axis=1).T)
-        trajectory_list.append([(my_x,my_y),others_array])
-    return trajectory_list
-
-def load_others_array(fname,N,centered=False):
-    # loads the file into an array of frame index vs [x,y,flattened other array]    
-    trajectories = process_text_file_others(fname)
-    trajectory_list = []
-    for piD,traj in trajectories.iteritems():
+    for piD,traj in trajectories.items():
         data = []
         for val in traj:
             my_x = val[0]
@@ -138,7 +107,7 @@ def process_text_file_simple(fname):
 
 def process_text_file_others(fname):
     # Load CSV into pandas dataframe (and normalize positions)
-    df = pd.read_csv('./train/stanford/annotations/'+fname+'.txt',delimiter=' ',names=['frame','personID','x-pos','y-pos'])
+    df = pd.read_csv(fname + '.txt',delimiter=' ',names=['frame','personID','x-pos','y-pos'])
     df.head()
     num_rows = df.shape[0]
     x_max_abs, y_max_abs = get_max_x_y_positions(df)
