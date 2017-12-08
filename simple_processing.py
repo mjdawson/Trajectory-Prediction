@@ -14,7 +14,15 @@ def generate_augmented_trajs(traj):
     o7 = [(-y,-x) for (x,y) in traj]
     return [o1, o2, o3, o4, o5, o6, o7]
 
-
+def generate_orientations():
+    # whether to flip about y-axis, number of 90-degree ccw rotations
+    return [(False, 1),
+            (False, 2),
+            (False, 3),
+            (True, 0),
+            (True, 1),
+            (True, 2),
+            (True, 3)]
 
 def load_simple_array(fname,augment=False):
     # loads the file into a simple array of frame index vs [x,y]
@@ -54,11 +62,12 @@ def load_others_array(fname,N,centered=False):
                         others_array[ind_x,ind_y] = 1                    
 
             xy_array = np.array((my_x,my_y))
-            ret_array = np.concatenate((xy_array,others_array.flatten()),axis=0)
-            ret_array = np.reshape(ret_array,(2+N*N,1))
-            data.append(ret_array)
+            #ret_array = np.concatenate((xy_array,others_array.flatten()),axis=0)
+            #ret_array = np.reshape(ret_array,(2+N*N,1))
+            data.append((xy_array, others_array))
+        trajectory_list.append(data)
         #trajectory_list.append(np.concatenate(data,axis=1).T)
-        trajectory_list.append([(my_x,my_y),others_array])
+        #trajectory_list.append([(my_x,my_y),others_array])
     return trajectory_list
 
 def load_full_array(fname,N):
@@ -67,10 +76,11 @@ def load_full_array(fname,N):
 
     trajectory_list = []
     for t in trajectory_list_with_others:
-        new_traj = list(t)
-        new_traj.append(segment_array)
-        new_traj.append(get_my_array(t, N))
-        trajectory_list.append(new_traj)
+        new_t = []
+        for xy_array, others_array in t:
+            me_array = get_my_array(xy_array, N)
+            new_t.append((xy_array, me_array, others_array, segment_array))
+        trajectory_list.append(new_t)
     #trajectory_list = [t.append(segment_array) for t in trajectory_list_with_others]
     #trajectory_list = [t.append(get_my_array(t, N)) for t in trajectory_list]
     return trajectory_list
@@ -129,7 +139,9 @@ def process_text_file_others(fname):
 
 def get_my_array(trajectory, N):
     me_array = np.zeros((N,N))
-    (x,y), _ = trajectory
+    x = trajectory[0]
+    y = trajectory[1]
+    #(x,y), _ = trajectory
     x = float(x)
     y = float(y)    
     x = (x+1.0)/2       # normalize between 0 and 1
@@ -142,7 +154,7 @@ def get_my_array(trajectory, N):
 
 
 def get_segmented_image(fname, N=10):
-    with open('./image_labels/' + fname + '.csv', 'rU') as f:  #opens PW file
+    with open(fname + '.csv', 'rU') as f:  #opens PW file
         reader = csv.reader(f)
         data = list(list(rec) for rec in csv.reader(f, delimiter=',')) #reads csv into a list of lists
         f.close() #close the csv
@@ -157,13 +169,56 @@ def get_segmented_image(fname, N=10):
         ny = int(N*y)
         if nx >= 0 and nx < N and ny >= 0 and ny < N:
             segment_array[nx,ny] = seg_class
-    return segment_array.flatten()
+    return segment_array
+
+def load_full_augmented_data(fname, N):
+    augmented_trajectories = []
+  
+    trajectories = load_full_array(fname, N)
+    orientations = generate_orientations()
+
+    augmented_trajectories += trajectories
+
+    for traj in trajectories:
+        for flip, num_rotations in orientations:
+            new_traj = []
+          
+            for t in traj:
+                coords, me, others, seg = t
+                x, y = coords[0], coords[1]
+
+                new_x, new_y = x, y
+                new_me = me
+                new_others = others
+                new_seg = seg
+
+                if flip:
+                    new_x, new_y = -new_x, new_y
+                    new_me = np.flip(new_me, axis=0)
+                    new_others = np.flip(new_others, axis=0)
+                    new_seg = np.flip(new_seg, axis=0)
+
+                for _ in range(num_rotations):
+                    tmp = new_x
+                    new_x = -new_y
+                    new_y = tmp
+                    new_me = np.rot90(new_me)
+                    new_others = np.rot90(new_others)
+                    new_seg = np.rot90(new_seg)
+
+                new_traj.append((np.array((new_x, new_y)), new_me, new_others, new_seg))
+
+            augmented_trajectories.append(new_traj)
+
+    return augmented_trajectories
+
+        
 
 
 if __name__ == '__main__':
     N = 10
-    fname = 'nexus_3'
-    traj = load_full_array(fname,N)
+    fname = 'train/nexus_3'
+    traj = load_full_augmented_data(fname,N)
     print('=================== (x,y) ===================')
     print(traj[0][0])
     print('')

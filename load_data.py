@@ -1,21 +1,105 @@
+import torch
+from torchvision import models
+import numpy as np
 import os
 import sys
-sys.path.append('./processing_scripts/')
-from simple_processing import load_simple_array
+from simple_processing import load_full_augmented_data
 
-def load_data():
+train_videos = ['bookstore_2', 'bookstore_3', 'coupa_3', 'deathcircle_2', \
+                'deathcircle_3', 'deathcircle_4', 'gates_3', 'gates_4', \
+                'gates_5', 'gates_6', 'gates_7', 'gates_8', 'hyang_4', \
+                'hyang_5', 'hyang_6', 'hyang_7', 'hyang_9', 'nexus_3', \
+                'nexus_4', 'nexus_7', 'nexus_8', 'nexus_9']
 
-  train_trajectories = []
-  for filename in os.listdir('train/stanford/annotations/'):
-    train_trajectories += load_simple_array('train/stanford/annotations/' + filename)
+dev_videos = ['bookstore_0', 'deathcircle_0', 'gates_0', 'nexus_0']
 
-  dev_trajectories = []
-  for filename in os.listdir('dev/stanford/annotations/'):
-    dev_trajectories += load_simple_array('dev/stanford/annotations/' + filename)
+test_videos = ['bookstore_1', 'deathcircle_1', 'gates_1', 'nexus_1']
 
-  test_trajectories = []
-  for filename in os.listdir('test/stanford/annotations/'):
-    test_trajectories += load_simple_array('test/stanford/annotations/' + filename)
 
-  return train_trajectories, dev_trajectories, test_trajectories
+def load_data(include_me=True, include_others=True, include_seg=True, use_encoding=True, N=100):
+  
+  if use_encoding and not (include_others and include_seg and include_me):
+    print 'must include all 3 channels if encodings are to be used'
+    return None, None, None
+  
+  alexnet = models.alexnet(pretrained=True)
+  cnn_layer = torch.nn.Sequential(*(list(alexnet.features.children()))[:-1])
+
+  train_prefix = 'train/'
+  dev_prefix = 'dev/'
+  test_prefix = 'text/'
+ 
+  train_trajectories = get_trajectories(train_prefix,
+                                        train_videos,
+                                        cnn_layer,
+                                        include_me,
+                                        include_others,
+                                        include_seg,
+                                        use_encoding,
+                                        N)
+  dev_trajectories = get_trajectories(dev_prefix,
+                                      dev_videos,
+                                      cnn_layer,
+                                      include_me,
+                                      include_others,
+                                      include_seg,
+                                      use_encoding,
+                                      N)
+  test_trajectories = get_trajectories(test_prefix,
+                                       test_videos,
+                                       cnn_layer,
+                                       include_me,
+                                       include_others,
+                                       include_seg,
+                                       use_encoding,
+                                       N)
+
+  print train_trajectories.shape, dev_trajectories.shape, test_trajectories.shape
+
+def get_trajectories(prefix,
+                     videos,
+                     cnn_layer,
+                     include_me=True,
+                     include_others=True,
+                     include_seg=True,
+                     use_encoding=True,
+                     N=100):
+
+  trajectories = []
+  for video in videos:
+    print video
+    filename = prefix + video
+
+    trajs = load_full_augmented_data(filename, N)
     
+    for traj in trajs:
+      new_traj = []
+      for xy_array, me_array, others_array, seg_array in traj:
+        features = xy_array
+
+        if use_encoding:
+          cnn_input = np.stack((me_array, others_array, seg_array)).reshape((1, 3, N, N))
+          cnn_input_tensor = torch.autograd.Variable(torch.FloatTensor(cnn_input))
+          cnn_output_tensor = cnn_layer(cnn_input_tensor)
+          cnn_output = cnn_output_tensor.data.numpy()
+
+          features = np.concatenate((features, cnn_output.flatten()))
+        else:
+          if include_me:
+            features = np.concatenate((features, me_array.flatten()))
+          if include_others:
+            features = np.concatenate((features, others_array.flatten()))
+          if include_seg:
+            features = np.concatenate((features, seg_array.flatten()))
+
+        new_traj.append(features)
+
+      new_traj = np.stack(new_traj)
+      trajectories.append(new_traj)
+  
+  trajectories = np.stack(trajectories)
+  return trajectories
+
+if __name__ == '__main__':
+  load_data()
+
