@@ -10,7 +10,7 @@ from plot_trajectories import plot_trajectories
 from simple_processing import load_simple_array
 
 
-class TrajectoryPredictor:
+class TrajectoryPredictorVel:
 
   def __init__(self, input_dim, output_dim, batch_size):
 
