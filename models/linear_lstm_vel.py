@@ -163,23 +163,19 @@ class TrajectoryPredictor:
 if __name__ == '__main__':
   train_trajectories1 = []
   train_trajectories2 = []
-  for dirname in os.listdir('train'):
-    if dirname == 'stanford':
-      for filename in os.listdir('train/' + dirname + '/annotations'):
-        if filename.endswith('.txt'):
-          trajectories = load_simple_array('train/' + dirname + '/annotations/' + filename, augment=True)
-          train_trajectories1 += [traj[:10,:] for traj in trajectories]
-          train_trajectories2 += [traj[10:,:] for traj in trajectories]
+  for filename in os.listdir('train'):
+    if filename.endswith('.txt'):
+      trajectories = load_simple_array('train/' + filename, augment=True)
+      train_trajectories1 += [traj[:10,:] for traj in trajectories]
+      train_trajectories2 += [traj[10:,:] for traj in trajectories]
 
   dev_trajectories1 = []
   dev_trajectories2 = []
-  for dirname in os.listdir('dev'):
-    if dirname == 'stanford':
-      for filename in os.listdir('dev/' + dirname + '/annotations'):
-        if filename.endswith('.txt'):
-          trajectories = load_simple_array('dev/' + dirname + '/annotations/' + filename, augment=True)
-          dev_trajectories1 += [traj[:10,:] for traj in trajectories]
-          dev_trajectories2 += [traj[10:,:] for traj in trajectories]
+  for filename in os.listdir('dev'):
+    if filename.endswith('.txt'):
+      trajectories = load_simple_array('dev/' + filename, augment=True)
+      dev_trajectories1 += [traj[:10,:] for traj in trajectories]
+      dev_trajectories2 += [traj[10:,:] for traj in trajectories]
   
   train_trajectories1 = np.stack(train_trajectories1)
   train_trajectories2 = np.stack(train_trajectories2)

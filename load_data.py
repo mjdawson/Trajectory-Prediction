@@ -19,15 +19,18 @@ test_videos = ['bookstore_1', 'deathcircle_1', 'gates_1', 'nexus_1']
 def load_data(include_me=True, include_others=True, include_seg=True, use_encoding=True, N=100):
   
   if use_encoding and not (include_others and include_seg and include_me):
-    print 'must include all 3 channels if encodings are to be used'
-    return None, None, None
+    print('must include all 3 channels if encodings are to be used')
   
   alexnet = models.alexnet(pretrained=True)
   cnn_layer = torch.nn.Sequential(*(list(alexnet.features.children()))[:-1])
 
-  train_prefix = 'train/'
-  dev_prefix = 'dev/'
-  test_prefix = 'text/'
+  train_prefix = '/train_data/'
+  dev_prefix = '/dev_data/'
+  test_prefix = '/test_data/'
+
+  os.makedirs('/output' + train_prefix)
+  os.makedirs('/output' + dev_prefix)
+  os.makedirs('/output' + test_prefix)
  
   train_trajectories = get_trajectories(train_prefix,
                                         train_videos,
@@ -54,8 +57,6 @@ def load_data(include_me=True, include_others=True, include_seg=True, use_encodi
                                        use_encoding,
                                        N)
 
-  print train_trajectories.shape, dev_trajectories.shape, test_trajectories.shape
-
 def get_trajectories(prefix,
                      videos,
                      cnn_layer,
@@ -65,9 +66,9 @@ def get_trajectories(prefix,
                      use_encoding=True,
                      N=100):
 
-  trajectories = []
   for video in videos:
-    print video
+    print(video)
+    video_trajectories = []
     filename = prefix + video
 
     trajs = load_full_augmented_data(filename, N)
@@ -95,11 +96,11 @@ def get_trajectories(prefix,
         new_traj.append(features)
 
       new_traj = np.stack(new_traj)
-      trajectories.append(new_traj)
-  
-  trajectories = np.stack(trajectories)
-  return trajectories
+      video_trajectories.append(new_traj)
+   
+    video_trajectories = np.stack(video_trajectories)
+    np.save('/output' + prefix + video, video_trajectories)
 
 if __name__ == '__main__':
-  load_data()
+  load_data(True, True, True, True, 40)
 
