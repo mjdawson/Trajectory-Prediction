@@ -9,7 +9,9 @@ def compute_linear_error(trajectories, Nf):
     #   outputs:
     #     - error : sqrt of sum of square loss (normalized by trajectory length)
     dataset_error = 0.0
-    for traj in trajectories:
+    num_trajs = trajectories.shape[0]
+    for i in range(num_trajs):
+        traj = trajectories[i, :, :]
         num_frames,num_people = traj.shape
         if num_frames <= Nf:
             raise ValueError("Nf needs to be shorter than the number of frames in the trajectory")

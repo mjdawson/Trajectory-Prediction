@@ -12,7 +12,7 @@ from simple_processing import load_simple_array
 
 class TrajectoryPredictorLinearVel:
 
-  def __init__(self, input_dim, middle_dim, output_dim, batch_size):
+  def __init__(self, input_dim, middle_dim, output_dim, batch_size, lstm_state_dict=None, lin_state_dict=None):
 
     self.input_dim = input_dim
     self.middle_dim = middle_dim
@@ -22,11 +22,17 @@ class TrajectoryPredictorLinearVel:
     self.linear = torch.nn.Linear(input_dim, middle_dim)
     self.lstm = torch.nn.LSTM(middle_dim, output_dim)
 
+    if lin_state_dict:
+      self.linear.load_state_dict(lin_state_dict)
+
+    if lstm_state_dict:
+      self.lstm.load_state_dict(lstm_state_dict)
+
   # tensors should be sequence_len x batch_size x input_dim
-  def train(self, train_loader, num_epochs):
+  def train(self, train_loader, num_epochs, lr=0.001, wd=0):
 
     loss_function = torch.nn.PairwiseDistance()
-    optimizer = torch.optim.Adam([{'params':self.lstm.parameters()}, {'params':self.linear.parameters()}])
+    optimizer = torch.optim.Adam([{'params':self.lstm.parameters()}, {'params':self.linear.parameters()}], lr=lr, weight_decay=wd)
 
     for epoch in range(num_epochs):   
       total_loss = 0.0
@@ -75,7 +81,7 @@ class TrajectoryPredictorLinearVel:
 
         second_part_preds = torch.cat(second_part_preds, dim=1)
 
-        ground_truth_points = traj_second_part.contiguous().view(-1, self.output_dim)
+        ground_truth_points = traj_second_part[:,:,0:2].contiguous().view(-1, self.output_dim)
         pred_points = second_part_preds.contiguous().view(-1, self.output_dim)
 
         loss = loss_function(ground_truth_points, pred_points).sum()
@@ -134,7 +140,7 @@ class TrajectoryPredictorLinearVel:
         #  v_x = out[0,:,0] - prev_out[0,:,0]
         #  v_y = out[0,:,1] - prev_out[0,:,1]
         prev_out = out
-        inp = torch.cat((out, v_x.contiguous().view(1,actual_batch_size,1), v_y.contiguous().view(1,actual_batch_size,1)), dim=2)
+        inp = torch.cat((out, traj_second_part[:,i,2:].contiguous().view(1, actual_batch_size, -1), v_x.contiguous().view(1,actual_batch_size,1), v_y.contiguous().view(1,actual_batch_size,1)), dim=2)
 
         tmp = self.linear(inp)
         out, self.state = self.lstm(tmp, self.state)
@@ -142,7 +148,7 @@ class TrajectoryPredictorLinearVel:
 
       second_part_preds = torch.cat(second_part_preds, dim=1)
 
-      ground_truth_points = traj_second_part.contiguous().view(-1, self.output_dim)
+      ground_truth_points = traj_second_part[:,:,0:2].contiguous().view(-1, self.output_dim)
       pred_points = second_part_preds.contiguous().view(-1, self.output_dim)
       
       ground_truth_trajectories.append(ground_truth_points.data.numpy())

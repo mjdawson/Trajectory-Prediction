@@ -80,9 +80,9 @@ def get_trajectories(prefix,
 
         if use_encoding:
           cnn_input = np.stack((me_array, others_array, seg_array)).reshape((1, 3, N, N))
-          cnn_input_tensor = torch.autograd.Variable(torch.cuda.FloatTensor(cnn_input))
+          cnn_input_tensor = torch.autograd.Variable(torch.from_numpy(cnn_input).cuda())
           cnn_output_tensor = cnn_layer(cnn_input_tensor)
-          cnn_output = cnn_output_tensor.data.numpy()
+          cnn_output = cnn_output_tensor.data.cpu().numpy()
 
           features = np.concatenate((features, cnn_output.flatten()))
         else:

@@ -12,7 +12,7 @@ from simple_processing import load_simple_array
 
 class TrajectoryPredictor:
 
-  def __init__(self, input_dim, output_dim, batch_size):
+  def __init__(self, input_dim, output_dim, batch_size, lstm_state_dict=None):
 
     self.input_dim = input_dim
     self.output_dim = output_dim
@@ -20,11 +20,14 @@ class TrajectoryPredictor:
 
     self.lstm = torch.nn.LSTM(input_dim, output_dim)
 
+    if lstm_state_dict:
+      self.lstm.load_state_dict(lstm_state_dict)
+
   # tensors should be sequence_len x batch_size x input_dim
-  def train(self, train_loader, num_epochs):
+  def train(self, train_loader, num_epochs, lr=0.001, wd=0):
 
     loss_function = torch.nn.PairwiseDistance()
-    optimizer = torch.optim.Adam(self.lstm.parameters())
+    optimizer = torch.optim.Adam(self.lstm.parameters(), lr=lr, weight_decay=wd)
 
     for epoch in range(num_epochs):   
       total_loss = 0.0
@@ -56,7 +59,7 @@ class TrajectoryPredictor:
 
         second_part_preds = torch.cat(second_part_preds, dim=1)
 
-        ground_truth_points = traj_second_part.contiguous().view(-1, self.output_dim)
+        ground_truth_points = traj_second_part[:,:,0:2].contiguous().view(-1, self.output_dim)
         pred_points = second_part_preds.contiguous().view(-1, self.output_dim)
 
         loss = loss_function(ground_truth_points, pred_points).sum()
@@ -101,13 +104,13 @@ class TrajectoryPredictor:
       prev_out = out
 
       for i in range(second_part_len-1):
-        inp = out
+        inp = torch.cat((out, traj_second_part[:,i,2:].contiguous().view(1, actual_batch_size, -1)), dim=2)
         out, self.state = self.lstm(inp, self.state)
         second_part_preds.append(out.contiguous().view(actual_batch_size, 1, self.output_dim))
 
       second_part_preds = torch.cat(second_part_preds, dim=1)
 
-      ground_truth_points = traj_second_part.contiguous().view(-1, self.output_dim)
+      ground_truth_points = traj_second_part[:,:,0:2].contiguous().view(-1, self.output_dim)
       pred_points = second_part_preds.contiguous().view(-1, self.output_dim)
       
       ground_truth_trajectories.append(ground_truth_points.data.numpy())
