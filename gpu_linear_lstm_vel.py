@@ -139,7 +139,8 @@ class TrajectoryPredictorLinearVel:
         #  v_x = out[0,:,0] - prev_out[0,:,0]
         #  v_y = out[0,:,1] - prev_out[0,:,1]
         prev_out = out
-        inp = torch.cat((out, traj_second_part[:,i,2:].contiguous().view(1, actual_batch_size, -1), v_x.contiguous().view(1,actual_batch_size,1), v_y.contiguous().view(1,actual_batch_size,1)), dim=2).contiguous().view(actual_batch_size, self.input_dim)
+        #inp = torch.cat((out, traj_second_part[:,i,2:].contiguous().view(1, actual_batch_size, -1), v_x.contiguous().view(1,actual_batch_size,1), v_y.contiguous().view(1,actual_batch_size,1)), dim=2).contiguous().view(actual_batch_size, self.input_dim)
+        inp = out
 
         tmp = self.linear(inp)
         out, self.state = self.lstm(tmp.contiguous().view(1, actual_batch_size, self.middle_dim), self.state)
